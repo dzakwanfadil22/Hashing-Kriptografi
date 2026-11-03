@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hashing</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="logo">CH</div>
+        <div>
+          <h2>Hashing</h2>
+          <p>Multi Algorithm Hashing</p>
+        </div>
+        <span class="status">● SYSTEM READY</span>
+      </header>
+
+      <section class="hero">
+        <span class="tag">CRYPTOGRAPHY TOOL</span>
+      </section>
+
+      <main class="workspace">
+        <section class="panel">
+          <div class="section-title">
+            <div>
+              <h3>Hash Generator</h3>
+              <p>Pilih algoritma dan masukkan teks.</p>
+            </div>
+            <span class="number">01</span>
+          </div>
+
+          <label for="algorithm">Pilih Algoritma</label>
+
+          <select id="algorithm">
+            <optgroup label="MD5">
+              <option value="md5">MD5 (128-bit)</option>
+            </optgroup>
+
+            <optgroup label="SHA-1">
+              <option value="sha1">SHA-1 (160-bit)</option>
+            </optgroup>
+
+            <optgroup label="SHA-2">
+              <option value="sha224">SHA-224 (224-bit)</option>
+              <option value="sha256" selected>SHA-256 (256-bit)</option>
+              <option value="sha384">SHA-384 (384-bit)</option>
+              <option value="sha512">SHA-512 (512-bit)</option>
+            </optgroup>
+
+            <optgroup label="SHA-3">
+              <option value="sha3_224">SHA3-224 (224-bit)</option>
+              <option value="sha3_256">SHA3-256 (256-bit)</option>
+              <option value="sha3_384">SHA3-384 (384-bit)</option>
+              <option value="sha3_512">SHA3-512 (512-bit)</option>
+            </optgroup>
+          </select>
+
+          <label for="inputText">Input Teks</label>
+
+          <textarea
+            id="inputText"
+            placeholder="Masukkan teks yang ingin di-hashing..."
+          ></textarea>
+
+          <div class="input-info">
+            <span>UTF-8 Encoding</span>
+            <span id="charCount">0 karakter</span>
+          </div>
+
+          <button class="primary-btn" onclick="generateHash()">
+            Generate Hash →
+          </button>
+
+          <button
+            class="secondary-btn"
+            onclick="resetForm()"
+            style="width: 100%; margin-top: 10px"
+          >
+            Reset All
+          </button>
+
+          <div class="result-section">
+            <div class="result-heading">
+              <label>Hasil Hash</label>
+              <span id="resultStatus">Belum diproses</span>
+            </div>
+
+            <div id="hashResult" class="hash-output">
+              Hasil hashing akan muncul di sini...
+            </div>
+
+            <div class="result-buttons">
+              <button class="secondary-btn" onclick="copyHash()">
+                Copy Hash
+              </button>
+              <button class="secondary-btn" onclick="downloadHash()">
+                Download
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <div>
+              <h3>Hash Verification</h3>
+              <p>Periksa kecocokan hash dengan teks asli.</p>
+            </div>
+            <span class="number">02</span>
+          </div>
+
+          <label for="expectedHash">Masukkan Hash Pembanding</label>
+
+          <textarea
+            id="expectedHash"
+            placeholder="Tempel hash yang ingin diverifikasi..."
+            rows="4"
+          ></textarea>
+
+          <button class="verify-btn" onclick="verifyHash()">Verify Hash</button>
+
+          <div id="verifyResult" class="verify-output">
+            Hasil verifikasi akan muncul di sini.
+          </div>
+
+          <div class="info-card">
+            <h4>Bagaimana verifikasi bekerja?</h4>
+            <p>
+              Sistem akan menghitung hash dari teks yang kamu masukkan, kemudian
+              membandingkannya dengan hash pembanding.
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <section class="panel history-panel">
+        <div class="section-title">
+          <div>
+            <h3>Hash History</h3>
+            <p>Riwayat proses hashing selama sesi ini.</p>
+          </div>
+          <button class="clear-btn" onclick="clearHistory()">
+            Clear History
+          </button>
+        </div>
+
+        <div id="historyList">
+          <p class="empty-history">Belum ada riwayat hashing.</p>
+        </div>
+      </section>
+
+      <footer>
+        <p>CryptoHash Studio © 2026 | Educational Cryptography Project</p>
+        <p>Powered by Python & Flask</p>
+      </footer>
+    </div>
+
+    <script>
+      let currentHash = "";
+
+      // Menghitung jumlah karakter
+      document
+        .getElementById("inputText")
+        .addEventListener("input", function () {
+          document.getElementById("charCount").textContent =
+            this.value.length + " karakter";
+        });
+
+      // Mengirim permintaan hashing ke Python
+      async function processHash(action) {
+        const text = document.getElementById("inputText").value;
+        const algorithm = document.getElementById("algorithm").value;
+        const expectedHash = document.getElementById("expectedHash").value;
+
+        const responseBox = document.getElementById("verifyResult");
+
+        if (!text.trim()) {
+          alert("Silakan masukkan teks terlebih dahulu!");
+          return null;
+        }
+
+        if (action === "verify" && !expectedHash.trim()) {
+          alert("Masukkan hash pembanding terlebih dahulu!");
+          return null;
+        }
+
+        try {
+          const response = await fetch("/api/hash", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: text,
+              algorithm: algorithm,
+              action: action,
+              expected_hash: expectedHash,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Terjadi kesalahan.");
+          }
+
+          return data;
+        } catch (error) {
+          alert(error.message);
+          return null;
+        }
+      }
+
+      // Generate hash
+      async function generateHash() {
+        const data = await processHash("generate");
+
+        if (!data) return;
+
+        currentHash = data.hash;
+
+        document.getElementById("hashResult").textContent = data.hash;
+
+        document.getElementById("resultStatus").textContent =
+          data.algorithm + " | " + data.bits + "-bit";
+
+        addHistory(data.algorithm, data.hash);
+
+        document.getElementById("verifyResult").textContent =
+          "Hash berhasil dibuat. Siap untuk diverifikasi.";
+      }
+
+      // Verifikasi hash
+      async function verifyHash() {
+        const data = await processHash("verify");
+
+        if (!data) return;
+
+        const result = document.getElementById("verifyResult");
+
+        if (data.match) {
+          result.className = "verify-output success";
+          result.textContent = "✓ HASH COCOK! Data sesuai.";
+        } else {
+          result.className = "verify-output failed";
+          result.textContent = "✕ HASH TIDAK COCOK! Data berbeda.";
+        }
+      }
+
+      // Copy hash
+      async function copyHash() {
+        if (!currentHash) {
+          alert("Belum ada hasil hash!");
+          return;
+        }
+
+        await navigator.clipboard.writeText(currentHash);
+        alert("Hash berhasil disalin!");
+      }
+
+      // Download hash
+      function downloadHash() {
+        if (!currentHash) {
+          alert("Belum ada hasil hash!");
+          return;
+        }
+
+        const blob = new Blob([currentHash], {
+          type: "text/plain",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "hasil-hash.txt";
+        link.click();
+
+        URL.revokeObjectURL(url);
+      }
+
+      // Mengambil riwayat dari localStorage
+      let historyData = JSON.parse(localStorage.getItem("hashHistory")) || [];
+
+      // Menambahkan riwayat baru
+      function addHistory(algorithm, hash) {
+        const newHistory = {
+          algorithm: algorithm,
+          hash: hash,
+          date: new Date().toLocaleString("id-ID"),
+        };
+
+        historyData.unshift(newHistory);
+
+        // Maksimal menyimpan 20 riwayat
+        historyData = historyData.slice(0, 20);
+
+        // Simpan ke localStorage
+        localStorage.setItem("hashHistory", JSON.stringify(historyData));
+
+        renderHistory();
+      }
+
+      // Menampilkan riwayat
+      function renderHistory() {
+        const historyList = document.getElementById("historyList");
+
+        if (historyData.length === 0) {
+          historyList.innerHTML = "<p>Belum ada riwayat hashing.</p>";
+          return;
+        }
+
+        historyList.innerHTML = historyData
+          .map(
+            (item, index) => `
+        <div class="history-item">
+            <strong>${item.algorithm}</strong>
+            <p>${item.hash}</p>
+            <small>${item.date || ""}</small>
+        </div>
+    `,
+          )
+          .join("");
+      }
+
+      // Menghapus semua riwayat
+      function clearHistory() {
+        if (confirm("Yakin ingin menghapus semua riwayat?")) {
+          historyData = [];
+
+          localStorage.removeItem("hashHistory");
+
+          renderHistory();
+        }
+      }
+
+      // Tampilkan riwayat ketika halaman dibuka
+      document.addEventListener("DOMContentLoaded", renderHistory);
+
+      // Menghapus riwayat
+      function clearHistory() {
+        historyData = [];
+        renderHistory();
+      }
+
+      // Reset input
+      function resetForm() {
+        document.getElementById("inputText").value = "";
+        document.getElementById("expectedHash").value = "";
+        document.getElementById("charCount").textContent = "0 karakter";
+        document.getElementById("hashResult").textContent =
+          "Hasil hashing akan muncul di sini...";
+        document.getElementById("resultStatus").textContent = "Belum diproses";
+        document.getElementById("verifyResult").textContent =
+          "Hasil verifikasi akan muncul di sini.";
+
+        currentHash = "";
+      }
+    </script>
+  </body>
+</html>
